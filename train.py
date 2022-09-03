@@ -20,9 +20,9 @@ from utils.dataloader import YoloDataset, yolo_dataset_collate
 from utils.utils import get_classes, show_config
 from utils.utils_fit import fit_one_epoch
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "4, 5"
-device_ids = [0, 1]
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "4, 5"
+# device_ids = [0, 1]
 
 '''
 训练自己的目标检测模型一定需要注意以下几点：
@@ -330,7 +330,7 @@ if __name__ == "__main__":
             model_train = torch.nn.parallel.DistributedDataParallel(model_train, device_ids=[local_rank],
                                                                     find_unused_parameters=True)
         else:
-            model_train = torch.nn.DataParallel(model, device_ids=device_ids)
+            model_train = torch.nn.DataParallel(model)
             cudnn.benchmark = True
             model_train = model_train.cuda()
 
