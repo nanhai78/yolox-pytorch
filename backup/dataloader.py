@@ -26,7 +26,6 @@ class YoloDataset(Dataset):
 
         self.epoch_now = -1
         self.length = len(self.annotation_lines)
-        self.color_trans = False
 
     def __len__(self):
         return self.length
@@ -142,23 +141,22 @@ class YoloDataset(Dataset):
         #   对图像进行色域变换
         #   计算色域变换的参数
         # ---------------------------------#
-        if self.color_trans:
-            r = np.random.uniform(-1, 1, 3) * [hue, sat, val] + 1
-            # ---------------------------------#
-            #   将图像转到HSV上
-            # ---------------------------------#
-            hue, sat, val = cv2.split(cv2.cvtColor(image_data, cv2.COLOR_RGB2HSV))
-            dtype = image_data.dtype
-            # ---------------------------------#
-            #   应用变换
-            # ---------------------------------#
-            x = np.arange(0, 256, dtype=r.dtype)
-            lut_hue = ((x * r[0]) % 180).astype(dtype)
-            lut_sat = np.clip(x * r[1], 0, 255).astype(dtype)
-            lut_val = np.clip(x * r[2], 0, 255).astype(dtype)
+        r = np.random.uniform(-1, 1, 3) * [hue, sat, val] + 1
+        # ---------------------------------#
+        #   将图像转到HSV上
+        # ---------------------------------#
+        hue, sat, val = cv2.split(cv2.cvtColor(image_data, cv2.COLOR_RGB2HSV))
+        dtype = image_data.dtype
+        # ---------------------------------#
+        #   应用变换
+        # ---------------------------------#
+        x = np.arange(0, 256, dtype=r.dtype)
+        lut_hue = ((x * r[0]) % 180).astype(dtype)
+        lut_sat = np.clip(x * r[1], 0, 255).astype(dtype)
+        lut_val = np.clip(x * r[2], 0, 255).astype(dtype)
 
-            image_data = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
-            image_data = cv2.cvtColor(image_data, cv2.COLOR_HSV2RGB)
+        image_data = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
+        image_data = cv2.cvtColor(image_data, cv2.COLOR_HSV2RGB)
 
         # ---------------------------------#
         #   对真实框进行调整
@@ -330,23 +328,22 @@ class YoloDataset(Dataset):
         #   对图像进行色域变换
         #   计算色域变换的参数
         # ---------------------------------#
-        if self.color_trans:
-            r = np.random.uniform(-1, 1, 3) * [hue, sat, val] + 1
-            # ---------------------------------#
-            #   将图像转到HSV上
-            # ---------------------------------#
-            hue, sat, val = cv2.split(cv2.cvtColor(new_image, cv2.COLOR_RGB2HSV))
-            dtype = new_image.dtype
-            # ---------------------------------#
-            #   应用变换
-            # ---------------------------------#
-            x = np.arange(0, 256, dtype=r.dtype)
-            lut_hue = ((x * r[0]) % 180).astype(dtype)
-            lut_sat = np.clip(x * r[1], 0, 255).astype(dtype)
-            lut_val = np.clip(x * r[2], 0, 255).astype(dtype)
+        r = np.random.uniform(-1, 1, 3) * [hue, sat, val] + 1
+        # ---------------------------------#
+        #   将图像转到HSV上
+        # ---------------------------------#
+        hue, sat, val = cv2.split(cv2.cvtColor(new_image, cv2.COLOR_RGB2HSV))
+        dtype = new_image.dtype
+        # ---------------------------------#
+        #   应用变换
+        # ---------------------------------#
+        x = np.arange(0, 256, dtype=r.dtype)
+        lut_hue = ((x * r[0]) % 180).astype(dtype)
+        lut_sat = np.clip(x * r[1], 0, 255).astype(dtype)
+        lut_val = np.clip(x * r[2], 0, 255).astype(dtype)
 
-            new_image = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
-            new_image = cv2.cvtColor(new_image, cv2.COLOR_HSV2RGB)
+        new_image = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
+        new_image = cv2.cvtColor(new_image, cv2.COLOR_HSV2RGB)
 
         # ---------------------------------#
         #   对框进行进一步的处理

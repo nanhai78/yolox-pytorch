@@ -20,7 +20,9 @@ from utils.dataloader import YoloDataset, yolo_dataset_collate
 from utils.utils import get_classes, show_config
 from utils.utils_fit import fit_one_epoch
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1' # 下面老是报错 shape 不一致
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4, 5"
+device_ids = [0, 1]
 
 '''
 训练自己的目标检测模型一定需要注意以下几点：
@@ -328,7 +330,7 @@ if __name__ == "__main__":
             model_train = torch.nn.parallel.DistributedDataParallel(model_train, device_ids=[local_rank],
                                                                     find_unused_parameters=True)
         else:
-            model_train = torch.nn.DataParallel(model)
+            model_train = torch.nn.DataParallel(model, device_ids=device_ids)
             cudnn.benchmark = True
             model_train = model_train.cuda()
 
@@ -370,9 +372,9 @@ if __name__ == "__main__":
             wanted_epoch = wanted_step // (num_train // Unfreeze_batch_size) + 1
             print("\n\033[1;33;44m[Warning] 使用%s优化器时，建议将训练总步长设置到%d以上。\033[0m" % (optimizer_type, wanted_step))
             print("\033[1;33;44m[Warning] 本次运行的总训练数据量为%d，Unfreeze_batch_size为%d，共训练%d个Epoch，计算出总训练步长为%d。\033[0m" % (
-            num_train, Unfreeze_batch_size, UnFreeze_Epoch, total_step))
+                num_train, Unfreeze_batch_size, UnFreeze_Epoch, total_step))
             print("\033[1;33;44m[Warning] 由于总训练步长为%d，小于建议总步长%d，建议设置总世代为%d。\033[0m" % (
-            total_step, wanted_step, wanted_epoch))
+                total_step, wanted_step, wanted_epoch))
 
     # ------------------------------------------------------#
     #   主干特征提取网络特征通用，冻结训练可以加快训练速度
