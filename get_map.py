@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from utils.utils import get_classes
 from utils.utils_map import get_coco_map, get_map
-from yolo1 import YOLO
+from yolo import YOLO
 
 if __name__ == "__main__":
     '''
