@@ -171,7 +171,7 @@ class EvalCallback():
         return
 
     def on_epoch_end(self, epoch, model_eval):
-        if epoch % self.period == 0 and self.eval_flag:
+        if epoch % self.period == 0 and self.eval_flag and epoch >= 30:
             self.net = model_eval
             if not os.path.exists(self.map_out_path):
                 os.makedirs(self.map_out_path)

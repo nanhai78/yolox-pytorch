@@ -87,7 +87,8 @@ if __name__ == "__main__":
         xmlArray = np.array(total_xml)
         xmlArray = xmlArray.reshape((-1, 9))
 
-        num = int(len(total_xml) / 9)  # 这里用组号来代替图片编号
+        # num = int(len(total_xml) / 9)  # 这里用组号来代替图片编号
+        num = 6000
         arrayList = range(num)
         tv = int(num * trainval_percent)  # 获取训练验证的组数
         tr = int(tv * train_percent)  # 获取训练集的组数
