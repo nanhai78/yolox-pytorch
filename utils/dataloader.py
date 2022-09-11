@@ -26,7 +26,7 @@ class YoloDataset(Dataset):
 
         self.epoch_now = -1
         self.length = len(self.annotation_lines)
-        self.color_trans = False
+        self.color_trans = True
 
     def __len__(self):
         return self.length
