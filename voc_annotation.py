@@ -12,7 +12,7 @@ from utils.utils import get_classes
 #   annotation_mode为1代表获得VOCdevkit/VOC2007/ImageSets里面的txt
 #   annotation_mode为2代表获得训练用的2007_train.txt、2007_val.txt
 # --------------------------------------------------------------------------------------------------------------------------------#
-annotation_mode = 2
+annotation_mode = 0
 # -------------------------------------------------------------------#
 #   必须要修改，用于生成2007_train.txt、2007_val.txt的目标信息
 #   与训练和预测所用的classes_path一致即可
@@ -32,9 +32,8 @@ train_percent = 0.9
 #   指向VOC数据集所在的文件夹
 #   默认指向根目录下的VOC数据集
 # -------------------------------------------------------#
-VOCdevkit_path = 'data'
-xml_path = 'label22B'
-bmp_path = 'bmp11B'
+VOCdevkit_path = '../data_jpg'
+xml_path = 'Annotations'
 VOCdevkit_sets = ['train', 'val']
 classes, _ = get_classes(classes_path)
 
@@ -77,41 +76,51 @@ if __name__ == "__main__":
     # 根据annotations里面的xml文件，来生成test,train,trainval,val.txt文件
     if annotation_mode == 0 or annotation_mode == 1:
         print("Generate txt in ImageSets.")
-        xmlfilepath = os.path.join(VOCdevkit_path, xml_path)
-        saveBasePath = os.path.join(VOCdevkit_path, 'Main')
+        xmlfilepath = os.path.join(VOCdevkit_path, xml_path)  # xml file path
+        saveBasePath = os.path.join(VOCdevkit_path, 'Main')  # main
         temp_xml = os.listdir(xmlfilepath)  # 得到该目录下的文件名
         total_xml = []  # 存放xml文件名的列表
         for xml in temp_xml:
             if xml.endswith(".xml"):
                 total_xml.append(xml)
 
-        num = len(total_xml)  # xml文件数量
-        list = range(num)
-        tv = int(num * trainval_percent)  # 获取训练验证集的数量 2025
-        tr = int(tv * train_percent)  # 获取训练集的数量 1822
-        trainval = list[:tv]
-        # trainval = random.sample(list, tv)  # 从list中随机选取tv个元素，作为新列表，这里存放的是被选为训练验证样本的索引
-        train = random.sample(trainval, tr)
+        xmlArray = np.array(total_xml)
+        xmlArray = xmlArray.reshape((-1, 9))
+
+        num = int(len(total_xml) / 9)  # 这里用组号来代替图片编号
+        arrayList = range(num)
+        tv = int(num * trainval_percent)  # 获取训练验证的组数
+        tr = int(tv * train_percent)  # 获取训练集的组数
+        trainval = random.sample(arrayList, tv)  # 从数据集中随机挑选 tv个组
+        train = random.sample(trainval, tr)  # 从训练验证集中随机挑选 tr个组
 
         print("train and val size", tv)
         print("train size", tr)
         # 在imagesets/main下创建这4个文件夹
-        ftrainval = open(os.path.join(saveBasePath, 'trainval.txt'), 'a')
-        ftest = open(os.path.join(saveBasePath, 'test.txt'), 'a')
-        ftrain = open(os.path.join(saveBasePath, 'train.txt'), 'a')
-        fval = open(os.path.join(saveBasePath, 'val.txt'), 'a')
+        ftrainval = open(os.path.join(saveBasePath, 'trainval.txt'), 'w')
+        ftest = open(os.path.join(saveBasePath, 'test.txt'), 'w')
+        ftrain = open(os.path.join(saveBasePath, 'train.txt'), 'w')
+        fval = open(os.path.join(saveBasePath, 'val.txt'), 'w')
 
         # 往各个txt文件写入xml的文件名
-        for i in list:
-            name = total_xml[i][:-4] + '\n'  # 遍历xml文件名
+        for i in arrayList:
+            nameArray = xmlArray[i]  # 遍历xml文件名
             if i in trainval:
-                ftrainval.write(name)
+                for name in nameArray:
+                    name = name[:-4] + "\n"
+                    ftrainval.write(name)
                 if i in train:
-                    ftrain.write(name)
+                     for name in nameArray:
+                         name = name[:-4] + "\n"
+                         ftrain.write(name)
                 else:
-                    fval.write(name)
+                     for name in nameArray:
+                         name = name[:-4] + "\n"
+                         fval.write(name)
             else:
-                ftest.write(name)
+                for name in nameArray:
+                    name = name[:-4] + "\n"
+                    ftest.write(name)
 
         ftrainval.close()
         ftrain.close()
@@ -119,7 +128,7 @@ if __name__ == "__main__":
         ftest.close()
         print("Generate txt in ImageSets done.")
 
-    # 生成train.txt和val.txt文件，里面主要存了图片的绝对路径和 box的坐标信息和类别信息
+    # 生成trainSet.txt和valSet.txt文件，里面主要存了图片的绝对路径和 box的坐标信息和类别信息
     if annotation_mode == 0 or annotation_mode == 2:
         print("Generate 2007_train.txt and 2007_val.txt for train.")
         type_index = 0
@@ -127,18 +136,18 @@ if __name__ == "__main__":
             # 读取Main下的train.txt
             image_ids = open(os.path.join(VOCdevkit_path, 'Main/%s.txt' % image_set),
                              encoding='utf-8').read().strip().split()
-            # list_file代表2007_train.txt文件
+            # list_file代表trainSet.txt文件
             list_file = open('%sSet.txt' % image_set, 'w', encoding='utf-8')
             for image_id in image_ids:
                 # 在2007_train.txt文件中写入相应的图片绝对路径和名称，
-                list_file.write('%s/BMPImage/%s.bmp' % (os.path.abspath(VOCdevkit_path), image_id))
+                list_file.write('%s/BMPImage/%s.jpg' % (os.path.abspath(VOCdevkit_path), image_id))
 
                 convert_annotation(image_id, list_file)  # 写入box坐标和类别
                 list_file.write('\n')
             photo_nums[type_index] = len(image_ids)  # photo_nums[0]表示训练集的图像，photo_nums[1]表示验证集的图像
             type_index += 1
             list_file.close()
-        print("Generate 2007_train.txt and 2007_val.txt for train done.")
+        print("Generate trainSet.txt and valSet.txt for train done.")
 
 
         def printTable(List1, List2):
