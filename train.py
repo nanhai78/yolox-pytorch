@@ -111,10 +111,12 @@ if __name__ == "__main__":
     #
     #   余弦退火算法的参数放到下面的lr_decay_type中设置
     # ------------------------------------------------------------------#
-    mosaic = True
+    mosaic = False
     mosaic_prob = 0.5
     mixup = False
     mixup_prob = 0.5
+    stitcher = True
+    stitcher_prob = 0.5
     special_aug_ratio = 0.7
 
     # ----------------------------------------------------------------------------------------------------------------------------#
@@ -442,10 +444,12 @@ if __name__ == "__main__":
         #   构建数据集加载器。
         # ---------------------------------------#
         train_dataset = YoloDataset(train_lines, input_shape, num_classes, epoch_length=UnFreeze_Epoch, \
-                                    mosaic=mosaic, mixup=mixup, mosaic_prob=mosaic_prob, mixup_prob=mixup_prob,
+                                    mosaic=mosaic, mixup=mixup, stitcher=stitcher, mosaic_prob=mosaic_prob,
+                                    mixup_prob=mixup_prob, stitcher_prob=stitcher_prob,
                                     train=True, special_aug_ratio=special_aug_ratio)
         val_dataset = YoloDataset(val_lines, input_shape, num_classes, epoch_length=UnFreeze_Epoch, \
-                                  mosaic=False, mixup=False, mosaic_prob=0, mixup_prob=0, train=False,
+                                  mosaic=False, mixup=False, stitcher=False, mosaic_prob=0, mixup_prob=0,
+                                  stitcher_prob=0, train=False,
                                   special_aug_ratio=0)
 
         if distributed:

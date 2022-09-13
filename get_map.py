@@ -24,7 +24,7 @@ if __name__ == "__main__":
     #   map_mode为3代表仅仅计算VOC_map。
     #   map_mode为4代表利用COCO工具箱计算当前数据集的0.50:0.95map。需要获得预测结果、获得真实框后并安装pycocotools才行
     # -------------------------------------------------------------------------------------------------------------------#
-    map_mode = 1
+    map_mode = 4
     # --------------------------------------------------------------------------------------#
     #   此处的classes_path用于指定需要测量VOC_map的类别
     #   一般情况下与训练和预测所用的classes_path一致即可
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     #   
     #   该值一般不调整。
     # --------------------------------------------------------------------------------------#
-    nms_iou = 0.3
+    nms_iou = 0.1
     # ---------------------------------------------------------------------------------------------------------------#
     #   Recall和Precision不像AP是一个面积的概念，因此在门限值不同时，网络的Recall和Precision值是不同的。
     #   
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     # -------------------------------------------------------#
     # VOCdevkit_path = 'VOCdevkit'
     # 一般来说只要更改测试集图片的路径和 类别.txt文件就能应用于新的仓库了。
-    Mydataset_path = 'data'
+    Mydataset_path = '../data_jpg'
     # -------------------------------------------------------#
     #   结果输出的文件夹，默认为map_out
     # -------------------------------------------------------#
@@ -97,7 +97,7 @@ if __name__ == "__main__":
 
         print("Get predict result.")
         for image_id in tqdm(image_ids):  # tqdm进度条库如image_ids长度为1800,在控制台就会显示处理图像的进度
-            image_path = os.path.join(Mydataset_path, "BMPImage/" + image_id + ".bmp")  # 图片路径
+            image_path = os.path.join(Mydataset_path, "BMPImage/" + image_id + ".jpg")  # 图片路径
             image = Image.open(image_path)
             if map_vis:  # 是否将预测后的图像保存在这个文件夹，不建议保存
                 image.save(os.path.join(map_out_path, "images-optional/" + image_id + ".jpg"))

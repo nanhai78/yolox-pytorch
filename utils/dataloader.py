@@ -10,8 +10,8 @@ from utils.utils import cvtColor, preprocess_input
 
 
 class YoloDataset(Dataset):
-    def __init__(self, annotation_lines, input_shape, num_classes, epoch_length, \
-                 mosaic, mixup, mosaic_prob, mixup_prob, train, special_aug_ratio=0.7):
+    def __init__(self, annotation_lines, input_shape, num_classes, epoch_length,
+                 mosaic, mixup, stitcher, mosaic_prob, mixup_prob, stitcher_prob, train, special_aug_ratio=0.7):
         super(YoloDataset, self).__init__()
         self.annotation_lines = annotation_lines
         self.input_shape = input_shape
@@ -27,6 +27,8 @@ class YoloDataset(Dataset):
         self.epoch_now = -1
         self.length = len(self.annotation_lines)
         self.color_trans = True
+        self.stitcher = stitcher
+        self.stitcher_prob = stitcher_prob
 
     def __len__(self):
         return self.length
@@ -43,6 +45,16 @@ class YoloDataset(Dataset):
             lines.append(self.annotation_lines[index])
             shuffle(lines)
             image, box = self.get_random_data_with_Mosaic(lines, self.input_shape)
+
+            if self.mixup and self.rand() < self.mixup_prob:
+                lines = sample(self.annotation_lines, 1)
+                image_2, box_2 = self.get_random_data(lines[0], self.input_shape, random=self.train)
+                image, box = self.get_random_data_with_MixUp(image, box, image_2, box_2)
+        elif self.stitcher and self.rand() < self.stitcher_prob and self.epoch_now < self.epoch_length * self.special_aug_ratio:
+            lines = sample(self.annotation_lines, 1)
+            lines.append(self.annotation_lines[index])
+            shuffle(lines)
+            image, box = self.get_random_data_with_stitcher(lines, self.input_shape)
 
             if self.mixup and self.rand() < self.mixup_prob:
                 lines = sample(self.annotation_lines, 1)
@@ -223,6 +235,37 @@ class YoloDataset(Dataset):
                 merge_bbox.append(tmp_box)
         return merge_bbox
 
+    def merge_bboxes_with_stitcher(self, bboxes, cutx, h):
+        merge_bbox = []
+        for i in range(len(bboxes)):
+            for box in bboxes[i]:
+                tmp_box = []
+                x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
+
+                if i == 0:  # image0
+                    if x1 > cutx or y1 > h:
+                        continue
+                    if x2 >= cutx and x1 <= cutx:
+                        x2 = cutx
+                    if y2 >= h and y1 <= h:
+                        y2 = h
+
+                if i == 1:  # image1
+                    if y1 > h or x2 < cutx:
+                        continue
+                    if y2 > h and y1 < h:
+                        y2 = h
+                    if x2 >= cutx and x1 <= cutx:
+                        x1 = cutx
+
+                tmp_box.append(x1)
+                tmp_box.append(y1)
+                tmp_box.append(x2)
+                tmp_box.append(y2)
+                tmp_box.append(box[-1])
+                merge_bbox.append(tmp_box)
+        return merge_bbox
+
     def get_random_data_with_Mosaic(self, annotation_line, input_shape, jitter=0.3, hue=.1, sat=0.7, val=0.4):
         h, w = input_shape
         min_offset_x = self.rand(0.3, 0.7)
@@ -352,6 +395,99 @@ class YoloDataset(Dataset):
         #   对框进行进一步的处理
         # ---------------------------------#
         new_boxes = self.merge_bboxes(box_datas, cutx, cuty)
+
+        return new_image, new_boxes
+
+    def get_random_data_with_stitcher(self, lines, input_shape, jitter=.2, hue=.1, sat=0.7, val=0.4, random=True):
+        h, w = input_shape
+        offset_x = 0.5  #
+        images_data = []  # store image data
+        boxes_data = []  # store box data
+        index = 0
+        for line in lines:
+            line_content = line.split()  # split the string by spaces and return a new list
+            image = Image.open(line_content[0])
+            image = cvtColor(image)
+            iw, ih = image.size  # 400,768
+            box = np.array([np.array(list(map(int, box.split(',')))) for box in line_content[1:]])  # [num_gt,5]
+            flip = self.rand() < .5  # random flip left and right
+            if flip and len(box) > 0:
+                image = image.transpose(Image.FLIP_LEFT_RIGHT)
+                box[:, [0, 2]] = iw - box[:, [2, 0]]  # adjust box
+            # in our images, new_ar value ranges from 0.28 to 0.967   iw/ih=0.5208
+            new_ar = iw / ih * self.rand(1 - jitter, 1 + jitter) / self.rand(1 - jitter,
+                                                                             1 + jitter)  # 400 / 768 * random(0.7, 1.3) / random(0.7, 1.3)
+            scale = self.rand(.6, 1)
+            if new_ar < 1:
+                nh = int(scale * h)
+                nw = int(nh * new_ar)
+            else:
+                nw = int(scale * w)
+                nh = int(nw / new_ar)
+            image = image.resize((nw, nh), Image.BICUBIC)
+            if index == 0:
+                dx = int(offset_x * w) - nw
+                dy = (h - nh) // 2
+            elif index == 1:
+                dx = int(offset_x * w)
+                dy = (h - nh) // 2
+            new_image = Image.new('RGB', (w, h), (128, 128, 128))  # 生成一张灰度图
+            new_image.paste(image, (dx, dy))  # dx，dy是左上角点
+            image_data = np.array(new_image)
+            index = index + 1
+            box_data = []
+            # ---------------------------------#
+            #   对box进行重新处理
+            # ---------------------------------#
+            if len(box) > 0:  # box -> [num_gt,5]
+                np.random.shuffle(box)
+                box[:, [0, 2]] = box[:, [0, 2]] * nw / iw + dx  # scale x ,then shift
+                box[:, [1, 3]] = box[:, [1, 3]] * nh / ih + dy
+                box[:, 0:2][box[:, 0:2] < 0] = 0  # if x1 or y1< 0, set to 0.
+                box[:, 2][box[:, 2] > w] = w  # if x2 or y2 > w, set to w
+                box[:, 3][box[:, 3] > h] = h
+                box_w = box[:, 2] - box[:, 0]  # width of box
+                box_h = box[:, 3] - box[:, 1]
+                box = box[np.logical_and(box_w > 1, box_h > 1)]  # 通过判断box的宽和高是否大于1 来过滤一些偏移到图像外面的gt_box框
+                box_data = np.zeros((len(box), 5))
+                box_data[:len(box)] = box  # through filter, keep the remaining boxes
+
+            images_data.append(image_data)
+            boxes_data.append(box_data)  #
+
+            # ---------------------------------#
+            #   将图片分割，放在一起
+            # ---------------------------------#
+        cutx = int(w * offset_x)
+
+        new_image = np.zeros([h, w, 3])
+        new_image[:, :cutx, :] = images_data[0][:, :cutx, :]
+        new_image[:, cutx:, :] = images_data[1][:, cutx:, :]
+
+        new_image = np.array(new_image, np.uint8)
+        if self.color_trans:
+            r = np.random.uniform(-1, 1, 3) * [hue, sat, val] + 1
+            # ---------------------------------#
+            #   将图像转到HSV上,H表示(色调色相，决定颜色的一个参数，取值为0-360) sat是饱和度,value是明度
+            # ---------------------------------#
+            hue, sat, val = cv2.split(cv2.cvtColor(new_image, cv2.COLOR_RGB2HSV))  # 通道拆分
+            dtype = new_image.dtype
+            # ---------------------------------#
+            #   应用变换
+            # ---------------------------------#
+            x = np.arange(0, 256, dtype=r.dtype)
+            lut_hue = ((x * r[0]) % 180).astype(dtype)
+            # np.clip()将数组限制在指定范围内，如下若数组中有比0小的数会变成0，比255大的数会变成255
+            lut_sat = np.clip(x * r[1], 0, 255).astype(dtype)
+            lut_val = np.clip(x * r[2], 0, 255).astype(dtype)
+            # LUT函数主要根据提供的table，将一个channel的像素值进行替换。首先像素值是0-255。根据像素值大小去表中找‘与像素值大小相同的索引’的值 进行替换
+            new_image = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
+            new_image = cv2.cvtColor(new_image, cv2.COLOR_HSV2RGB)
+
+            # ---------------------------------#
+            #   对框进行进一步的处理
+            # ---------------------------------#
+        new_boxes = self.merge_bboxes_with_stitcher(boxes_data, cutx, h)
 
         return new_image, new_boxes
 
